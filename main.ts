@@ -9,7 +9,12 @@
 // Usage (from the repository root):
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 // MAKEFUN_OUTPUT_DIR defaults to /output when unset.
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+//
+// By design this program does NO validation of POST.json: the house reads
+// the post and checks the file itself, and a URL form the house accepts
+// (e.g. with a query string) must still be copied. Any check here could
+// only turn a gradable entry into a failed run, so the copy is unconditional.
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,29 +29,6 @@ if (!existsSync(postFile)) {
   process.exit(1);
 }
 
-const raw = readFileSync(postFile, "utf8");
-if (raw.length > 16384) {
-  console.error(`POST.json is ${raw.length} bytes; the gate allows at most 16384`);
-  process.exit(1);
-}
-let post;
-try {
-  post = JSON.parse(raw);
-} catch {
-  console.error("POST.json is not valid JSON");
-  process.exit(1);
-}
-if (typeof post !== "object" || post === null || typeof post.url !== "string") {
-  console.error('POST.json must be a JSON object with a string "url" field');
-  process.exit(1);
-}
-if (!/^https:\/\/(www\.|mobile\.)?(x\.com|twitter\.com)\/[^/]+\/status\/\d+$/.test(post.url) &&
-    !/^https:\/\/(www\.|mobile\.)?(x\.com|twitter\.com)\/i\/web\/status\/\d+$/.test(post.url)) {
-  console.error(`POST.json url is not an X post address: ${post.url}`);
-  process.exit(1);
-}
-
 mkdirSync(outDir, { recursive: true });
 copyFileSync(postFile, join(outDir, "POST.json"));
-console.log(`Copied POST.json (${raw.length} bytes) to ${join(outDir, "POST.json")}`);
-console.log(`Post: ${post.url}`);
+console.log(`Copied POST.json to ${join(outDir, "POST.json")}`);
